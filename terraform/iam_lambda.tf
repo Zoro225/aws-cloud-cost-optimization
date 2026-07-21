@@ -62,3 +62,15 @@ resource "aws_iam_role_policy" "lambda_sns_publish" {
     ]
   })
 }
+
+
+
+
+
+resource "aws_iam_role_policy_attachment" "lambda_cloudwatch" {
+
+  role = aws_iam_role.lambda_role.name
+
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchReadOnlyAccess"
+
+}
