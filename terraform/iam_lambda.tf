@@ -74,3 +74,30 @@ resource "aws_iam_role_policy_attachment" "lambda_cloudwatch" {
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchReadOnlyAccess"
 
 }
+
+
+
+
+resource "aws_iam_role_policy" "lambda_cost_explorer" {
+
+  name = "${var.project_name}-${var.environment}-cost-explorer-policy"
+
+  role = aws_iam_role.lambda_role.id
+
+  policy = jsonencode({
+
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Action = [
+          "ce:GetCostAndUsage"
+        ]
+
+        Resource = "*"
+      }
+    ]
+  })
+}

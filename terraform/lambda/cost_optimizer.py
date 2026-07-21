@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 ec2 = boto3.client("ec2")
 sns = boto3.client("sns")
 cloudwatch = boto3.client("cloudwatch")
+cost_explorer = boto3.client("ce")
 
 
 SNS_TOPIC_ARN = os.environ["SNS_TOPIC_ARN"]
@@ -15,31 +16,89 @@ def lambda_handler(event, context):
 
     recommendations = []
 
-    # EC2 checks
+    # AWS Cost Explorer - Current Month Cost
+
+    today = datetime.utcnow()
+
+    cost_response = cost_explorer.get_cost_and_usage(
+        TimePeriod={
+            "Start": today.replace(day=1).strftime("%Y-%m-%d"),
+            "End": today.strftime("%Y-%m-%d")
+        },
+        Granularity="MONTHLY",
+        Metrics=[
+            "UnblendedCost"
+        ],
+        GroupBy=[
+            {
+                "Type": "DIMENSION",
+                "Key": "SERVICE"
+            }
+        ]
+    )
+
+
+    cost_message = """
+💰 AWS Cost Summary
+"""
+
+
+    for group in cost_response["ResultsByTime"][0]["Groups"]:
+
+        service = group["Keys"][0]
+
+        amount = group["Metrics"]["UnblendedCost"]["Amount"]
+
+        cost_message += f"""
+Service:
+{service}
+
+Cost:
+${float(amount):.2f}
+
+"""
+
+
+    recommendations.append(cost_message)
+
+
+    # EC2 Optimization Check
+
     instances = ec2.describe_instances()
 
+
     for reservation in instances["Reservations"]:
+
         for instance in reservation["Instances"]:
 
             if instance["State"]["Name"] == "running":
 
                 instance_id = instance["InstanceId"]
+
                 instance_type = instance["InstanceType"]
 
-                # Get CPU utilization for last 7 days
+
                 cpu = cloudwatch.get_metric_statistics(
+
                     Namespace="AWS/EC2",
+
                     MetricName="CPUUtilization",
+
                     Dimensions=[
                         {
                             "Name": "InstanceId",
                             "Value": instance_id
                         }
                     ],
+
                     StartTime=datetime.utcnow() - timedelta(days=7),
+
                     EndTime=datetime.utcnow(),
+
                     Period=86400,
+
                     Statistics=["Average"]
+
                 )
 
 
@@ -75,35 +134,17 @@ Review workload and consider downsizing.
                         )
 
 
-                else:
+    # Unattached EBS Volumes
 
-                    recommendations.append(
-                        f"""
-ℹ️ EC2 Instance Review
-
-Instance ID:
-{instance_id}
-
-Instance Type:
-{instance_type}
-
-Finding:
-No CPU metrics available.
-
-Recommendation:
-Review instance usage manually.
-"""
-                    )
-
-
-    # Unattached EBS volumes
     volumes = ec2.describe_volumes(
+
         Filters=[
             {
                 "Name": "status",
                 "Values": ["available"]
             }
         ]
+
     )
 
 
@@ -130,6 +171,7 @@ Unused volumes continue generating storage cost.
 
 
     # Unused Elastic IPs
+
     addresses = ec2.describe_addresses()
 
 
@@ -150,19 +192,28 @@ Release unused Elastic IP.
             )
 
 
-    # Send SNS notification
+    # Send Notification
+
     if recommendations:
 
         message = "\n".join(recommendations)
 
+
         sns.publish(
+
             TopicArn=SNS_TOPIC_ARN,
+
             Subject="AWS Cost Optimization Recommendations",
+
             Message=message
+
         )
 
 
     return {
+
         "statusCode": 200,
+
         "body": "Cost optimization check completed"
+
     }
