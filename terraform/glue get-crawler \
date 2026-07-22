@@ -1,0 +1,42 @@
+{
+    "Crawler": {
+        "Name": "aws-cost-optimization-dev-crawler",
+        "Role": "aws-cost-optimization-dev-glue-role",
+        "Targets": {
+            "S3Targets": [
+                {
+                    "Path": "s3://aws-cost-optimization-dev-cost-export-637435ce/cur/",
+                    "Exclusions": []
+                }
+            ],
+            "JdbcTargets": [],
+            "MongoDBTargets": [],
+            "DynamoDBTargets": [],
+            "CatalogTargets": [],
+            "DeltaTargets": [],
+            "IcebergTargets": [],
+            "HudiTargets": []
+        },
+        "DatabaseName": "aws_cost_analysis",
+        "Classifiers": [],
+        "RecrawlPolicy": {
+            "RecrawlBehavior": "CRAWL_EVERYTHING"
+        },
+        "SchemaChangePolicy": {
+            "UpdateBehavior": "UPDATE_IN_DATABASE",
+            "DeleteBehavior": "LOG"
+        },
+        "LineageConfiguration": {
+            "CrawlerLineageSettings": "DISABLE"
+        },
+        "State": "RUNNING",
+        "CrawlElapsedTime": 6213,
+        "CreationTime": "2026-07-22T11:52:54+00:00",
+        "LastUpdated": "2026-07-22T11:52:54+00:00",
+        "Version": 1,
+        "LakeFormationConfiguration": {
+            "UseLakeFormationCredentials": false,
+            "AccountId": ""
+        }
+    }
+}
